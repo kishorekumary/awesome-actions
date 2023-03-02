@@ -1,9 +1,33 @@
-name: Lint Awesome List
-on: [push, pull_request]
+name: New-Build and Deploy B2B-FantasyCricket
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_env:
+        type: choice
+        description: "Select Environment"
+        options:
+          - Develop
+          - Production
+        required: true
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1.0.0
-      - uses: max/awesome-lint@v2.0.0
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Notify about failure
+        if: ${{ failure() }}
+        run: |
+           cat << EOF > message.json
+           {"@type":"MessageCard","@context":"https://schema.org/extensions","summary":"Pipeline failed!","themeColor":"ff0000","title":"$GITHUB_REPOSITORY pipeline failed 😞💢!","sections":[{"facts":[{"name":"Repository:","value":"$GITHUB_REPOSITORY"},{"name":"Branch:","value":"$GITHUB_REF_NAME"},{"name":"Environment:","value":"${{github.event.inputs.deploy_env}}"},{"name":"Commit:","value":"$GITHUB_SHA"},{"name":"RunBy:","value":"$GITHUB_ACTOR"}]}],"potentialAction":[{"@type":"OpenUri","name":"View on GitHub","targets":[{"os":"default","uri":"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"}]}]}
+           EOF
+           curl -X POST ${{ secrets.ABC_WEBHOOK }} --header 'Content-Type: application/json' -d @message.json
+     
+      - name: Notify about Success
+        if: ${{ success() }}
+        run: |
+           cat << EOF > message.json
+           {"@type":"MessageCard","@context":"https://schema.org/extensions","summary":"Deployemnt Success!","themeColor":"#00FF00","title":"$GITHUB_REPOSITORY pipeline Succeed 👍!","sections":[{"facts":[{"name":"Repository:","value":"$GITHUB_REPOSITORY"},{"name":"Branch:","value":"$GITHUB_REF_NAME"},{"name":"Environment:","value":"${{github.event.inputs.deploy_env}}"},{"name":"Commit:","value":"$GITHUB_SHA"},{"name":"RunBy:","value":"$GITHUB_ACTOR"}]}],"potentialAction":[{"@type":"OpenUri","name":"View on GitHub","targets":[{"os":"default","uri":"$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"}]}]}
+           EOF
+           curl -X POST ${{ secrets.ABC_WEBHOOK }} --header 'Content-Type: application/json' -d @message.json
